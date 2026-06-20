@@ -27,7 +27,7 @@ The following diagram illustrates how the transliteration process handles a type
 
 ```mermaid
 graph TD
-    A[Typed Token: "kathmandu"] --> B(Normalize Key: "kathmandu")
+    A["Typed Token: 'kathmandu'"] --> B("Normalize Key: 'kathmandu'")
     B --> C{Learned User Corrections?}
     C -- Yes --> D[Rank Learned Value First]
     C -- No --> E{Exact Dictionary Hit?}
@@ -39,7 +39,7 @@ graph TD
     F --> J
     H --> J
     I --> J
-    J --> K[Return Candidates: "काठमाडौं", "काठमाण्डू", ...]
+    J --> K["Return Candidates: काठमाडौं, काठमाण्डू, ..."]
 ```
 
 ---
