@@ -1,4 +1,4 @@
-## 0.0.1
+## 0.1.0
 
 * Initial release of the `nepali_transliteration` package.
 * Added offline Romanized-to-Nepali phonetic transliteration engine (`convertToNepali`).
