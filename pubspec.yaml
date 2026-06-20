@@ -1,7 +1,7 @@
 name: nepali_transliteration
 description: "An offline-first Romanized-to-Nepali transliteration engine and custom Devanagari keyboard widget for Flutter."
 version: 0.0.1
-homepage:
+repository: https://github.com/pratt778/nepali_transliteration
 
 environment:
   sdk: ^3.11.0
