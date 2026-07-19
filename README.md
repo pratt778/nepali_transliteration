@@ -144,6 +144,9 @@ String result = convertToNepali('namaste');
 * **Anusvara / Chandrabindu**: Use `*` for anusvara (ं) and `**` for chandrabindu (ँ) (e.g. `gha**s` -> घाँस).
 * **Verbatim Pass-through**: Wrap text in `{...}` to bypass conversion (e.g. `nepal {App}` -> नेपाल App).
 
+> [!WARNING]
+> Because case carries meaning (`t` vs `T`, `n` vs `N`, `d` vs `D`, `sh` vs `Sh`), any `TextField` that feeds text into `convertToNepali` or the dictionary's phonetic fallback should use `textCapitalization: TextCapitalization.none`. Otherwise an auto-capitalized first letter (common on name/sentence fields) silently flips a dental consonant to its retroflex counterpart for any word that isn't already a dictionary hit — e.g. an auto-capitalized "Natak" phonetically converts to `णतक` instead of `नतक`.
+
 ---
 
 ### 5. Custom Devanagari On-Screen Keyboard

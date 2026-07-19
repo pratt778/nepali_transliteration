@@ -1,6 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nepali_transliteration/nepali_transliteration.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// SharedPreferences key the learned corrections snapshot is saved under.
+const String _kLearnedPrefsKey = 'nepali_learned_corrections';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,9 +51,8 @@ class DemoHomeScreen extends StatefulWidget {
 class _DemoHomeScreenState extends State<DemoHomeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = true;
-  String _loadError = '';
   int _dictionarySize = 0;
+  int _learnedCount = 0;
 
   // Tab 1: Interactive & Sentence Transliteration
   final TextEditingController _interactiveInputController =
@@ -76,22 +81,47 @@ class _DemoHomeScreenState extends State<DemoHomeScreen>
         _isKeyboardFocused = _keyboardFocusNode.hasFocus;
       });
     });
-    _loadDictionary();
   }
 
-  Future<void> _loadDictionary() async {
-    try {
-      final dict = await NepaliDictionary.load();
-      setState(() {
-        _isLoading = false;
-        _dictionarySize = dict.size;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _loadError = e.toString();
-      });
+  /// Runs once [NepaliDictionaryLoader] finishes loading — restores
+  /// corrections learned in previous sessions and reflects the dictionary's
+  /// stats in the UI. Loading/error UI itself is handled by the loader
+  /// widget, so there's no `isLoading`/`loadError` state to manage here.
+  Future<void> _onDictionaryReady(NepaliDictionary dict) async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_kLearnedPrefsKey);
+    if (saved != null) {
+      dict.loadLearned(Map<String, String>.from(jsonDecode(saved) as Map));
     }
+    if (!mounted) return;
+    setState(() {
+      _dictionarySize = dict.size;
+      _learnedCount = dict.learnedCount;
+    });
+  }
+
+  /// Saves the current learned-corrections snapshot so it survives restarts.
+  Future<void> _persistLearned() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _kLearnedPrefsKey,
+      jsonEncode(NepaliDictionary.instance.learnedSnapshot()),
+    );
+  }
+
+  Future<void> _resetLearned() async {
+    NepaliDictionary.instance.clearLearned();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kLearnedPrefsKey);
+    setState(() => _learnedCount = 0);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Cleared all learned corrections'),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -164,6 +194,12 @@ class _DemoHomeScreenState extends State<DemoHomeScreen>
   void _selectCandidate(String candidate) {
     if (_activeWord.isEmpty) return;
 
+    // Picking anything other than the top suggestion is a correction —
+    // remember it so this word ranks `candidate` first next time.
+    final bool isCorrection =
+        _candidates.isNotEmpty && _candidates.first != candidate;
+    final String correctedWord = _activeWord;
+
     final text = _interactiveInputController.text;
 
     // We add a space after the candidate for faster typing flow
@@ -187,6 +223,19 @@ class _DemoHomeScreenState extends State<DemoHomeScreen>
       _activeWord = '';
       _candidates = [];
     });
+
+    if (isCorrection && NepaliDictionary.isLoaded) {
+      NepaliDictionary.instance.remember(correctedWord, candidate);
+      setState(() => _learnedCount = NepaliDictionary.instance.learnedCount);
+      _persistLearned();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Learned: "$correctedWord" → $candidate'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _onBulkTextChanged() {
@@ -220,9 +269,6 @@ class _DemoHomeScreenState extends State<DemoHomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -239,54 +285,15 @@ class _DemoHomeScreenState extends State<DemoHomeScreen>
           ],
         ),
       ),
-      body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Loading Dictionary Asset...',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : _loadError.isNotEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline, color: cs.error, size: 60),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Failed to load dictionary asset',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: cs.error,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _loadError,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : TabBarView(
-              controller: _tabController,
-              children: [_buildTransliterateTab(), _buildKeyboardTab()],
-            ),
+      // NepaliDictionaryLoader owns the loading/error UI, so the only thing
+      // this screen does is react once the dictionary is ready.
+      body: NepaliDictionaryLoader(
+        onReady: _onDictionaryReady,
+        builder: (context, dictionary) => TabBarView(
+          controller: _tabController,
+          children: [_buildTransliterateTab(), _buildKeyboardTab()],
+        ),
+      ),
     );
   }
 
@@ -328,7 +335,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen>
                         Text(
                           'Loaded $_dictionarySize keys. You can type in romanized English and it will auto-suggest matching Devanagari words.',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: cs.onPrimaryContainer.withValues(alpha:0.8),
+                            color: cs.onPrimaryContainer.withValues(alpha: 0.8),
                           ),
                         ),
                       ],
@@ -349,12 +356,32 @@ class _DemoHomeScreenState extends State<DemoHomeScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Type below (e.g., "namaste nepal", "kaathmaandu"). Tap on suggestions to replace romanized words with correct Nepali.',
+            'Type below (e.g., "namaste nepal", "kaathmaandu"). Tap on suggestions to replace romanized words with correct Nepali. '
+            'Picking a suggestion other than the first one teaches the dictionary to rank your choice first next time.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: cs.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.school_outlined, size: 16, color: cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Text(
+                '$_learnedCount learned correction${_learnedCount == 1 ? '' : 's'} saved',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              if (_learnedCount > 0)
+                TextButton(
+                  onPressed: _resetLearned,
+                  child: const Text('Reset'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
 
           // Suggestion Bar
           AnimatedContainer(
@@ -502,7 +529,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen>
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
                       color: _bulkResult.isEmpty
-                          ? cs.onSurfaceVariant.withValues(alpha:0.5)
+                          ? cs.onSurfaceVariant.withValues(alpha: 0.5)
                           : cs.onSurface,
                     ),
                   ),
@@ -529,7 +556,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen>
               children: [
                 Card(
                   elevation: 0,
-                  color: cs.secondaryContainer.withValues(alpha:0.3),
+                  color: cs.secondaryContainer.withValues(alpha: 0.3),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

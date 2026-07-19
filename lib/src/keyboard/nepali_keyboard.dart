@@ -22,6 +22,13 @@ class NepaliKeyboard extends StatefulWidget {
 
 enum _KbMode { consonants, vowels, numbers }
 
+/// Keys that insert more than one Unicode code point as a single keypress
+/// (conjuncts and the anusvara-vowel), longest first so a longer unit is
+/// matched before a shorter one that happens to be its suffix.
+final List<String> _atomicMultiCharKeys =
+    [...kNepaliConsonants, ...kNepaliVowels].where((k) => k.length > 1).toList()
+      ..sort((a, b) => b.length - a.length);
+
 class _NepaliKeyboardState extends State<NepaliKeyboard> {
   _KbMode _mode = _KbMode.consonants;
 
@@ -37,7 +44,11 @@ class _NepaliKeyboardState extends State<NepaliKeyboard> {
     );
   }
 
-  /// Deletes the selection, or one character before the cursor.
+  /// Deletes the selection, or the character(s) before the cursor. A conjunct
+  /// key (क्ष, त्र, ज्ञ, अं) inserts multiple code points in one keypress, so
+  /// if the text immediately before the cursor is one of those units, the
+  /// whole unit is removed — otherwise a single keypress leaves a dangling
+  /// half-glyph (e.g. क्ष → क् after removing only the trailing ष).
   void _backspace() {
     final TextEditingValue v = widget.controller.value;
     final int start = v.selection.isValid ? v.selection.start : v.text.length;
@@ -51,9 +62,19 @@ class _NepaliKeyboardState extends State<NepaliKeyboard> {
       return;
     }
     if (start == 0) return;
+
+    int deleteLen = 1;
+    for (final String unit in _atomicMultiCharKeys) {
+      if (start - unit.length >= 0 &&
+          v.text.startsWith(unit, start - unit.length)) {
+        deleteLen = unit.length;
+        break;
+      }
+    }
+
     widget.controller.value = v.copyWith(
-      text: v.text.replaceRange(start - 1, start, ''),
-      selection: TextSelection.collapsed(offset: start - 1),
+      text: v.text.replaceRange(start - deleteLen, start, ''),
+      selection: TextSelection.collapsed(offset: start - deleteLen),
       composing: TextRange.empty,
     );
   }
@@ -166,9 +187,23 @@ class _NepaliKeyboardState extends State<NepaliKeyboard> {
                             ),
                           ],
                         ),
-                        NepaliKeyButton(
-                          label: 'space',
-                          onTap: () => _insert(' '),
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: NepaliKeyButton(
+                                label: 'space',
+                                onTap: () => _insert(' '),
+                              ),
+                            ),
+                            Expanded(
+                              child: NepaliKeyButton(
+                                icon: Icons.keyboard_return,
+                                accent: true,
+                                onTap: () => _insert('\n'),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

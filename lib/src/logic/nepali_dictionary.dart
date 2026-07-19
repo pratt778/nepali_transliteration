@@ -19,6 +19,13 @@ class NepaliDictionary {
   /// longer keys so loose spellings (`kathamandu`) still resolve.
   final Map<String, List<String>> _fuzzy;
 
+  /// Operator-picked corrections for this session: normalized key → the
+  /// Devanagari value the operator chose over the top-ranked suggestion.
+  /// Merged ahead of dictionary/fuzzy hits by [candidates] and [sentence].
+  /// This is in-memory only — see [learnedSnapshot] / [loadLearned] to
+  /// persist it across app restarts.
+  final Map<String, String> _learned = {};
+
   static Map<String, List<String>> _buildFuzzyIndex(
     Map<String, List<String>> map,
   ) {
@@ -63,23 +70,58 @@ class NepaliDictionary {
   /// Number of keys loaded — handy for diagnostics.
   int get size => _map.length;
 
-  /// Ranked Devanagari candidates for a single typed [token].
+  /// Number of corrections learned so far this session.
+  int get learnedCount => _learned.length;
+
+  /// Records that the operator picked [candidate] for [word] over whatever
+  /// ranked first, so future lookups of the same word — in any casing or
+  /// loose spelling that normalizes the same way — rank it first instead.
+  ///
+  /// This only updates the in-memory session map. To keep corrections across
+  /// app restarts, persist [learnedSnapshot] yourself (e.g. to
+  /// `shared_preferences`) and restore it with [loadLearned] at next launch.
+  void remember(String word, String candidate) {
+    final String key = normalizeDictKey(word);
+    if (key.isEmpty || candidate.isEmpty) return;
+    _learned[key] = candidate;
+  }
+
+  /// Forgets a previously [remember]ed correction for [word], if any.
+  void forget(String word) => _learned.remove(normalizeDictKey(word));
+
+  /// Clears every correction learned this session.
+  void clearLearned() => _learned.clear();
+
+  /// A serializable snapshot of everything learned so far — hand this to
+  /// your own storage (e.g. `jsonEncode` it into `shared_preferences`) to
+  /// persist corrections across app restarts.
+  Map<String, String> learnedSnapshot() => Map.unmodifiable(_learned);
+
+  /// Restores corrections previously saved via [learnedSnapshot] (e.g. loaded
+  /// back from `shared_preferences` at app start). Keys are expected to
+  /// already be normalized, exactly as [learnedSnapshot] produced them.
+  void loadLearned(Map<String, String> saved) => _learned.addAll(saved);
+
+  /// Ranked Devanagari candidates for a single typed [token]. Corrections
+  /// [remember]ed this session are always considered first; an explicit
+  /// [learned] map (if passed) takes priority over those.
   List<String> candidates(
     String token, {
     Map<String, String> learned = const {},
   }) => transliterationCandidates(
     token,
     dictionary: _map,
-    learned: learned,
+    learned: {..._learned, ...learned},
     fuzzy: _fuzzy,
   );
 
-  /// Best-guess transliteration of a whole [input] (phrase-aware).
+  /// Best-guess transliteration of a whole [input] (phrase-aware). Same
+  /// [learned]-merging rule as [candidates].
   String sentence(String input, {Map<String, String> learned = const {}}) =>
       transliterateSentence(
         input,
         dictionary: _map,
-        learned: learned,
+        learned: {..._learned, ...learned},
         fuzzy: _fuzzy,
       );
 }

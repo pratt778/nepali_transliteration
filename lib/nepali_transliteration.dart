@@ -9,4 +9,9 @@ export 'src/logic/nepali_transliteration.dart'
         transliterationCandidates,
         transliterateSentence;
 export 'src/logic/nepali_dictionary.dart' show NepaliDictionary;
+export 'src/logic/nepali_dictionary_loader.dart'
+    show
+        NepaliDictionaryLoader,
+        NepaliDictionaryWidgetBuilder,
+        NepaliDictionaryErrorBuilder;
 export 'src/keyboard/nepali_keyboard.dart' show NepaliKeyboard;

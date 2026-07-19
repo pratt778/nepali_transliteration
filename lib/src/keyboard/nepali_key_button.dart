@@ -34,6 +34,13 @@ class NepaliKeyButton extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(6),
           onTap: onTap,
+          // Keys must never take focus themselves — the whole point of this
+          // keyboard is to keep the target TextField focused between taps.
+          // Without this, tapping a key can steal focus away from that
+          // field, which collapses the keyboard's AnimatedSize (driven by
+          // the field's focus state) right after the tap that was supposed
+          // to type into it.
+          canRequestFocus: false,
           child: Container(
             height: 40,
             alignment: Alignment.center,

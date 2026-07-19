@@ -94,7 +94,9 @@ void main() {
   final List<String> droppedKeys = [];
   int rawCount = 0;
 
-  for (final FileSystemEntity f in dir.listSync()) {
+  final List<FileSystemEntity> files = dir.listSync()
+    ..sort((a, b) => a.path.compareTo(b.path));
+  for (final FileSystemEntity f in files) {
     if (f is! File || !f.path.endsWith('.json')) continue;
     final dynamic parsed = jsonDecode(f.readAsStringSync());
     final List<dynamic> list = parsed is Map<String, dynamic>

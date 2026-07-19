@@ -38,7 +38,8 @@
     {"name":"Kathmandu","type":"district","nepali":"काठमाडौं जिल्ला","roman":["kathmandu","ktm","katmandu","kantipur","kathmandu district"]},
     {"name":"Kavrepalanchok","type":"district","nepali":"काभ्रेपलाञ्चोक जिल्ला","roman":["kavre","kavrepalanchok","kabhre","banepa district","dhulikhel district"]},
     {"name":"Khotang","type":"district","nepali":"खोटाङ जिल्ला","roman":["khotang","khotang district"]},
-    {"name":"Lalitpur","type":"district","nepali":"ललितपुर जिल्ला","roman":["lalitpur","patan","ptn","lalitpur district"]},
+    {"name":"Lalitpur","type":"district","nepali":"ललितपुर जिल्ला","roman":["lalitpur","ptn","lalitpur district"]},
+    {"name":"Patan","type":"landmark","nepali":"पाटन","roman":["patan","patan durbar square","patan durbar"]},
     {"name":"Lamjung","type":"district","nepali":"लमजुङ जिल्ला","roman":["lamjung","lamjung district","besisahar district"]},
     {"name":"Mahottari","type":"district","nepali":"महोत्तरी जिल्ला","roman":["mahottari","mahotari","mahottari district","jaleshwar district"]},
     {"name":"Makwanpur","type":"district","nepali":"मकवानपुर जिल्ला","roman":["makwanpur","makwanpur district","hetauda district"]},
@@ -79,7 +80,7 @@
     {"name":"West Nawalparasi","type":"district","nepali":"नवलपरासी (बर्दघाट सुस्ता पश्चिम) जिल्ला","roman":["west nawalparasi","nawalparasi west","parasi","bardaghat susta west"]},
 
     {"name":"Kathmandu Metropolitan City","type":"metropolitan_city","nepali":"काठमाडौं महानगरपालिका","roman":["kathmandu","ktm","katmandu","kantipur","kathmandu metro"]},
-    {"name":"Lalitpur Metropolitan City","type":"metropolitan_city","nepali":"ललितपुर महानगरपालिका","roman":["lalitpur","patan","ptn","yala","lalitpur metro"]},
+    {"name":"Lalitpur Metropolitan City","type":"metropolitan_city","nepali":"ललितपुर महानगरपालिका","roman":["lalitpur","ptn","yala","lalitpur metro"]},
     {"name":"Bharatpur Metropolitan City","type":"metropolitan_city","nepali":"भरतपुर महानगरपालिका","roman":["bharatpur","bharatpur chitwan","bhratpur","bharatpur metro"]},
     {"name":"Biratnagar Metropolitan City","type":"metropolitan_city","nepali":"विराटनगर महानगरपालिका","roman":["biratnagar","brt","birat nagar","biratnagar metro"]},
     {"name":"Birgunj Metropolitan City","type":"metropolitan_city","nepali":"वीरगञ्ज महानगरपालिका","roman":["birgunj","birganj","brj","birgunj parsa","birgunj metro"]},
