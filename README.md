@@ -74,7 +74,7 @@ flutter:
 
 ### 1. Load the Dictionary
 
-Initialize the dictionary at app startup (e.g., in your `main()` function) or before loading the transliteration screens:
+Initialize the dictionary at app startup (e.g., in your `main()` function):
 
 ```dart
 import 'package:nepali_transliteration/nepali_transliteration.dart';
@@ -88,6 +88,26 @@ void main() async {
   runApp(const MyApp());
 }
 ```
+
+Alternatively, you can load it lazily directly within your widget tree using the helper `NepaliDictionaryLoader` widget. It manages loading/error states for you automatically:
+
+```dart
+import 'package:nepali_transliteration/nepali_transliteration.dart';
+
+@override
+Widget build(BuildContext context) {
+  return NepaliDictionaryLoader(
+    builder: (context, dictionary) {
+      return MyTransliterationScreen(dictionary: dictionary);
+    },
+    // Optional parameters:
+    // loadingBuilder: (context) => const CircularProgressIndicator(),
+    // errorBuilder: (context, error) => Text('Error: $error'),
+    // onReady: (dictionary) => print('Dictionary loaded!'),
+  );
+}
+```
+
 
 ---
 
@@ -107,6 +127,39 @@ List<String> customCandidates = dictionary.candidates(
   learned: {'ram': 'रामकुमार'},
 );
 ```
+
+#### Session-Level Learning & Persisting Corrections
+
+You can dynamically train the dictionary to prioritize corrections during a session. If a user selects a candidate other than the top-ranked suggestion, register it via `remember` so it is prioritized first in subsequent candidate lists for that word:
+
+```dart
+final dictionary = NepaliDictionary.instance;
+
+// Teach the dictionary to rank 'कथ्मन्दु' first for 'kathmandu'
+dictionary.remember('kathmandu', 'कथ्मन्दु');
+
+// 'कथ्मन्दु' is now first in candidates
+List<String> candidates = dictionary.candidates('kathmandu'); 
+
+// Forget a specific correction
+dictionary.forget('kathmandu');
+
+// Clear all corrections learned this session
+dictionary.clearLearned();
+```
+
+To persist these corrections across application restarts, retrieve a snapshot of the learned corrections, serialize/store it (e.g., via `shared_preferences`), and restore it at app launch:
+
+```dart
+// 1. Save snapshot to preferences
+Map<String, String> snapshot = dictionary.learnedSnapshot();
+await prefs.setString('learned_keys', jsonEncode(snapshot));
+
+// 2. Load and restore snapshot on next launch
+Map<String, String> saved = jsonDecode(prefs.getString('learned_keys') ?? '{}');
+dictionary.loadLearned(saved);
+```
+
 
 > [!TIP]
 > Use these candidates to display a horizontal suggestion bar (like Gboard or SwiftKey) above the keyboard. When a user taps a candidate, replace the active Romanized word with the selected Devanagari candidate.
